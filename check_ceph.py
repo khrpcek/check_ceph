@@ -8,7 +8,10 @@
 # disk space, if run with --pool you only alert on that pool. when run without --pool the thresholds are for every pool. warning and ciritcal are the max avail fields from `ceph df`: ./check_ceph.py -C ceph.conf --id icinga -k ceph.client.icinga.keyring --df -w 100 -c 50
 #
 #
-import sys, argparse, json, subprocess
+import sys
+import argparse
+import json
+import subprocess
 
 #ceph osd stat
 #ceph mon stat
@@ -27,10 +30,10 @@ def checkHealth(args):
     ceph_health_dict = json.loads(ceph_health_json)
 
     if ceph_health_dict['status'] == 'HEALTH_WARN':
-        print "%s: %s" % (ceph_health_dict['overall_status'], ceph_health_dict['summary'][0]['summary'])
+        print(f"{ceph_health_dict['overall_status']}: {ceph_health_dict['summary'][0]['summary']}")
         sys.exit(1)
     elif ceph_health_dict['status'] == 'HEALTH_OK':
-        print "%s" % (ceph_health_dict['status'])
+        print(ceph_health_dict['status'])
         sys.exit(0)
 
 def checkOSD(args):
@@ -39,26 +42,26 @@ def checkOSD(args):
     if args.critical:
         CRIT = float(args.critical)
     try:
-        osd_stat_json=subprocess.check_output(["ceph -n {0} -c {1} -k {2} --format json osd stat".format(args.id, args.conf, args.keyring)],shell=True)
+        osd_stat_json=subprocess.check_output([f"ceph --id {args.id} -c {args.conf} -k {args.keyring} --format json osd stat"], shell=True)
     except subprocess.CalledProcessError:
         sys.exit(3)
     osd_stat_dict = json.loads(osd_stat_json)
     osd_not_up = osd_stat_dict['num_osds'] - osd_stat_dict['num_up_osds']
     osd_not_in = osd_stat_dict['num_osds'] - osd_stat_dict['num_in_osds']
-    perf_string="num_osds={0} num_up_osds={1} num_in_osds={2}".format(osd_stat_dict['num_osds'], osd_stat_dict['num_up_osds'], osd_stat_dict['num_in_osds'])
+    perf_string=f"num_osds={osd_stat_dict['num_osds']} num_up_osds={osd_stat_dict['num_up_osds']} num_in_osds={osd_stat_dict['num_in_osds']}"
 
 #Build in logic to handle the full and near full keys that are returned in the json
     if (osd_not_up >= WARN and osd_not_up < CRIT) or (osd_not_in >= WARN and osd_not_in < CRIT):
-        print "WARNING: ALL OSDs are not up and in. {0} OSDS. {1} up, {2} in|{3}".format(osd_stat_dict['num_osds'], osd_stat_dict['num_up_osds'], osd_stat_dict['num_in_osds'], perf_string)
+        print(f"WARNING: ALL OSDs are not up and in. {osd_stat_dict['num_osds']} OSDS. {osd_stat_dict['num_up_osds']} up, {osd_stat_dict['num_in_osds']} in|{perf_string}")
         sys.exit(1)
     elif (osd_not_up >= CRIT) or (osd_not_in >= CRIT):
-        print "CRITICAL: ALL OSDs are not up and in. {0} OSDS. {1} up, {2} in|{3}".format(osd_stat_dict['num_osds'], osd_stat_dict['num_up_osds'], osd_stat_dict['num_in_osds'], perf_string)
+        print(f"CRITICAL: ALL OSDs are not up and in. {osd_stat_dict['num_osds']} OSDS. {osd_stat_dict['num_up_osds']} up, {osd_stat_dict['num_in_osds']} in|{perf_string}")
         sys.exit(2)
     elif (osd_stat_dict['num_osds'] == osd_stat_dict['num_in_osds']) and (osd_stat_dict['num_osds'] == osd_stat_dict['num_up_osds']):
-        print "ALL OSDs are up and in. {0} OSDS. {1} up, {2} in|{3}".format(osd_stat_dict['num_osds'], osd_stat_dict['num_up_osds'], osd_stat_dict['num_in_osds'], perf_string)
+        print(f"ALL OSDs are up and in. {osd_stat_dict['num_osds']} OSDS. {osd_stat_dict['num_up_osds']} up, {osd_stat_dict['num_in_osds']} in|{perf_string}")
         sys.exit(0)
     else:
-        print "Script shouldn't reach this point. Thar be bugs!"
+        print("Script shouldn't reach this point. There may be bugs!")
         sys.exit(3)
 
 def checkMON(args):
@@ -70,7 +73,7 @@ def checkMON(args):
 
 def checkPG(args):
     try:
-        pg_stat_json=subprocess.check_output(["ceph -n {0} -c {1} -k {2} --format json pg stat".format(args.id, args.conf, args.keyring)],shell=True)
+        pg_stat_json=subprocess.check_output([f"ceph --id {args.id} -c {args.conf} -k {args.keyring} --format json pg stat"], shell=True)
     except subprocess.CalledProcessError:
         sys.exit(3)
     pg_stat_dict=json.loads(pg_stat_json)
@@ -87,21 +90,21 @@ def checkPG(args):
     for x in pg_summary['num_pg_by_state']:
         if "active+clean" in x['name']:
             active_pgs += x['num']
-        perf_string += "%s=%s " % (x['name'], x['num'])
+        perf_string += f"{x['name']}={x['num']} "
 #Maybe build in a percentage based threshold for users who want to have thresholds like that
     if active_pgs < num_pgs:
-        print "WARNING: All PGs are not active+clean: {0} PGs Total, {1}|{1}".format(num_pgs, perf_string)
+        print(f"WARNING: All PGs are not active+clean: {num_pgs} PGs Total, {perf_string}|{perf_string}")
         sys.exit(1)
     elif active_pgs == num_pgs:
-        print "All PGs are active+clean: {0} PGs Total, {1}|{1}".format(num_pgs, perf_string)
+        print(f"All PGs are active+clean: {num_pgs} PGs Total, {perf_string}|{perf_string}")
         sys.exit(0)
     else:
-        print "Script shouldn't reach this point. Thar be bugs!"
+        print("Script shouldn't reach this point. There may be bugs!")
         sys.exit(3)
 
 def checkPerf(args):
     try:
-        pg_stat_json=subprocess.check_output(["ceph -n {0} -c {1} -k {2} --format json pg stat".format(args.id, args.conf, args.keyring)],shell=True)
+        pg_stat_json=subprocess.check_output([f"ceph --id {args.id} -c {args.conf} -k {args.keyring} --format json pg stat"], shell=True)
     except subprocess.CalledProcessError:
         sys.exit(3)
     pg_stat_dict=json.loads(pg_stat_json)
@@ -111,8 +114,8 @@ def checkPerf(args):
         pg_stat_dict['write_bytes_sec'] = 0
     if 'io_sec' not in  pg_stat_dict:
         pg_stat_dict['io_sec'] = 0
-    perf_string="read_bytes_sec={0} write_bytes_sec={1} io_sec={2}".format(pg_stat_dict['read_bytes_sec'],pg_stat_dict['write_bytes_sec'],pg_stat_dict['io_sec'])
-    print "Healthy: Additional perf stats for cluster {0}|{0}".format(perf_string)
+    perf_string=f"read_bytes_sec={pg_stat_dict['read_bytes_sec']} write_bytes_sec={pg_stat_dict['write_bytes_sec']} io_sec={pg_stat_dict['io_sec']}"
+    print(f"Healthy: Additional perf stats for cluster {perf_string}|{perf_string}")
     sys.exit(0)
         
 def checkDF(args):
@@ -135,40 +138,40 @@ def checkDF(args):
         perf_metric="TB"
 
     try:
-        ceph_df_json=subprocess.check_output(["ceph -n {0} -c {1} -k {2} --format json df".format(args.id, args.conf, args.keyring)],shell=True)
+        ceph_df_json=subprocess.check_output([f"ceph --id {args.id} -c {args.conf} -k {args.keyring} --format json df"], shell=True)
     except subprocess.CalledProcessError:
         sys.exit(3)
     ceph_df_dict=json.loads(ceph_df_json)
     #get global stats
-    global_bytes, global_used_bytes, global_avail_bytes = ceph_df_dict['stats']['total_bytes'],ceph_df_dict['stats']['total_used_bytes'],ceph_df_dict['stats']['total_avail_bytes']
-    global_total=global_bytes/byte_divisor
-    global_used=global_used_bytes/byte_divisor
-    global_avail=global_avail_bytes/byte_divisor
+    global_bytes, global_used_bytes, global_avail_bytes = ceph_df_dict['stats']['total_bytes'], ceph_df_dict['stats']['total_used_bytes'], ceph_df_dict['stats']['total_avail_bytes']
+    global_total=global_bytes / byte_divisor
+    global_used=global_used_bytes / byte_divisor
+    global_avail=global_avail_bytes / byte_divisor
     
     #get all pool stats
     pool_stats = {}
     for pool in ceph_df_dict['pools']:
-        pool_stats[pool['name']] = {'bytes_used':pool['stats']['bytes_used']/byte_divisor, 'max_avail':pool['stats']['max_avail']/byte_divisor, 'objects':pool['stats']['objects']}
+        pool_stats[pool['name']] = {'bytes_used': pool['stats']['bytes_used'] / byte_divisor, 'max_avail': pool['stats']['max_avail'] / byte_divisor, 'objects': pool['stats']['objects']}
 
-    perf_string="global_total_bytes={0}{3} global_used_bytes={1}{3} global_avail_bytes={2}{3} ".format(global_bytes/byte_divisor, global_used_bytes/byte_divisor, global_avail_bytes/byte_divisor, perf_metric)
+    perf_string=f"global_total_bytes={global_bytes / byte_divisor}{perf_metric} global_used_bytes={global_used_bytes / byte_divisor}{perf_metric} global_avail_bytes={global_avail_bytes / byte_divisor}{perf_metric} "
     for item in pool_stats.keys():
-        perf_string += "{0}_bytes_used={1}{2} {0}_max_avail={3}{2} {0}_objects={4} ".format(item, pool_stats[item]['bytes_used'], perf_metric,pool_stats[item]['max_avail'], pool_stats[item]['objects'])
+        perf_string += f"{item}_bytes_used={pool_stats[item]['bytes_used']}{perf_metric,pool_stats[item]['max_avail']} {item}_max_avail={pool_stats[item]['objects']}{perf_metric,pool_stats[item]['max_avail']} {item}_objects={4} "
 
 #if pool is defined alert on that. if pool is not defined alert on the max_avail of all pools if any cross threshold
     if args.pool in pool_stats.keys():
 #        print pool_stats[args.pool]
 #add in percentage later
         if (pool_stats[args.pool]['max_avail'] < WARN) and (pool_stats[args.pool]['max_avail'] > CRIT):
-            print "WARNING: Ceph pool {0} has {1}{2} availbale|{3}".format(args.pool, pool_stats[args.pool]['max_avail'],perf_metric,perf_string)
+            print(f"WARNING: Ceph pool {args.pool} has {pool_stats[args.pool]['max_avail']}{perf_metric} availbale|{perf_string}")
             sys.exit(1)
         elif pool_stats[args.pool]['max_avail'] < CRIT:
-            print "CRITICAL: Ceph pool {0} has {1}{2} availbale|{3}".format(args.pool, pool_stats[args.pool]['max_avail'],perf_metric,perf_string)
+            print(f"CRITICAL: Ceph pool {args.pool} has {pool_stats[args.pool]['max_avail']}{perf_metric} availbale|{perf_string}")
             sys.exit(2)
         elif pool_stats[args.pool]['max_avail'] > WARN:
-            print "Healthy: Ceph pool {0} has {1}{2} availbale|{3}".format(args.pool, pool_stats[args.pool]['max_avail'],perf_metric,perf_string)
+            prin(f"Healthy: Ceph pool {args.pool} has {pool_stats[args.pool]['max_avail']}{perf_metric} availbale|{perf_string}")
             sys.exit(0)
         else:
-            print "Script shouldn't reach this point. Thar be bugs!"
+            print("Script shouldn't reach this point. There may be bugs!")
             sys.exit(3)
 
     else:
@@ -178,20 +181,20 @@ def checkDF(args):
 
         for key in pool_stats.keys():
             if (pool_stats[key]['max_avail'] < WARN) and (pool_stats[key]['max_avail'] > CRIT):
-                warn_list.append("%s:%s%s" % (key,pool_stats[key]['max_avail'],perf_metric))
+                warn_list.append(f"{key}:{pool_stats[key]['max_avail']}{perf_metric}")
             elif pool_stats[key]['max_avail'] < CRIT:
-                crit_list.append("%s:%s%s" % (key,pool_stats[key]['max_avail'],perf_metric))
+                crit_list.append(f"{key}:{pool_stats[key]['max_avail']}{perf_metric}")
 
         if (len(warn_list) > 0) and (len(crit_list) == 0):
-            print "WARNING: Ceph pool(s) low on free space. {0}|{1}".format(warn_list, perf_string)
+            print(f"WARNING: Ceph pool(s) low on free space. {warn_list}|{perf_string}")
             sys.exit(1)
         elif len(crit_list) > 0:
-            print "CRITICAL: Ceph pool(s) critically low on free space. Critial:{0} Warning:{1}|{2}".format(crit_list, warn_list, perf_string)
+            print(f"CRITICAL: Ceph pool(s) critically low on free space. Critial:{crit_list} Warning:{warn_list}|{perf_string}")
             sys.exit(2)
         elif (len(warn_list) == 0) and (len(crit_list) == 0):
-            print "Healthy: All ceph pools are within free space thresholds|{0}".format(perf_string)
+            print(f"Healthy: All ceph pools are within free space thresholds|{perf_string}")
         else:
-            print "Script shouldn't reach this point. Thar be bugs!"
+            print("Script shouldn't reach this point. There may be bugs!")
             sys.exit(3)
             
                 

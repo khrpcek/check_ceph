@@ -34,7 +34,7 @@ sys.excepthook = handle_exception
 def checkHealth(args):
 
     try:
-        ceph_health_json=subprocess.check_output(["ceph -n {0} -c {1} -k {2} --format json health".format(args.id, args.conf, args.keyring)],shell=True)
+        ceph_health_json=subprocess.check_output([f"ceph -n {args.id} -c {args.conf} -k {args.keyring} --format json health"],shell=True)
     except subprocess.CalledProcessError:
         sys.exit(3)
 
@@ -53,7 +53,7 @@ def checkOSD(args):
     if args.critical:
         CRIT = float(args.critical)
     try:
-        osd_stat_json=subprocess.check_output([f"ceph --id {args.id} -c {args.conf} -k {args.keyring} --format json osd stat"], shell=True)
+        osd_stat_json=subprocess.check_output([f"ceph -n {args.id} -c {args.conf} -k {args.keyring} --format json osd stat"], shell=True)
     except subprocess.CalledProcessError:
         sys.exit(3)
     osd_stat_dict = json.loads(osd_stat_json)
@@ -84,7 +84,7 @@ def checkMON(args):
 
 def checkPG(args):
     try:
-        pg_stat_json=subprocess.check_output([f"ceph --id {args.id} -c {args.conf} -k {args.keyring} --format json pg stat"], shell=True)
+        pg_stat_json=subprocess.check_output([f"ceph -n {args.id} -c {args.conf} -k {args.keyring} --format json pg stat"], shell=True)
     except subprocess.CalledProcessError:
         sys.exit(3)
     pg_stat_dict=json.loads(pg_stat_json)
@@ -115,7 +115,7 @@ def checkPG(args):
 
 def checkPerf(args):
     try:
-        pg_stat_json=subprocess.check_output([f"ceph --id {args.id} -c {args.conf} -k {args.keyring} --format json pg stat"], shell=True)
+        pg_stat_json=subprocess.check_output([f"ceph -n {args.id} -c {args.conf} -k {args.keyring} --format json pg stat"], shell=True)
     except subprocess.CalledProcessError:
         sys.exit(3)
     pg_stat_dict=json.loads(pg_stat_json)
@@ -149,7 +149,7 @@ def checkDF(args):
         perf_metric="TB"
 
     try:
-        ceph_df_json=subprocess.check_output([f"ceph --id {args.id} -c {args.conf} -k {args.keyring} --format json df"], shell=True)
+        ceph_df_json=subprocess.check_output([f"ceph -n {args.id} -c {args.conf} -k {args.keyring} --format json df"], shell=True)
     except subprocess.CalledProcessError:
         sys.exit(3)
     ceph_df_dict=json.loads(ceph_df_json)

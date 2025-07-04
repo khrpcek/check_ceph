@@ -12,6 +12,8 @@ import sys
 import argparse
 import json
 import subprocess
+import traceback
+from types import TracebackType
 
 #ceph osd stat
 #ceph mon stat
@@ -19,6 +21,15 @@ import subprocess
 #ceph health status
 #ceph mon_status
 #ceph quorum status
+
+# If an error occurs try to exit with exitcode 3 (UNKNOWN state in the monitoring server)
+def handle_exception(
+    type_: type[BaseException], value: BaseException, tb: TracebackType | None
+) -> None:
+
+    traceback.print_tb(tb)
+    sys.exit(3)
+sys.excepthook = handle_exception
 
 def checkHealth(args):
 

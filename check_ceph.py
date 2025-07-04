@@ -16,7 +16,7 @@ import subprocess
 #ceph osd stat
 #ceph mon stat
 #ceph pg stat
-#ceph health statua
+#ceph health status
 #ceph mon_status
 #ceph quorum status
 
@@ -93,7 +93,7 @@ def checkPG(args):
         perf_string += f"{x['name']}={x['num']} "
 #Maybe build in a percentage based threshold for users who want to have thresholds like that
     if active_pgs < num_pgs:
-        print(f"WARNING: All PGs are not active+clean: {num_pgs} PGs Total, {perf_string}|{perf_string}")
+        print(f"WARNING: Not all PGs are active+clean: {num_pgs} PGs total, {perf_string}|{perf_string}")
         sys.exit(1)
     elif active_pgs == num_pgs:
         print(f"All PGs are active+clean: {num_pgs} PGs Total, {perf_string}|{perf_string}")
@@ -117,12 +117,12 @@ def checkPerf(args):
     perf_string=f"read_bytes_sec={pg_stat_dict['read_bytes_sec']} write_bytes_sec={pg_stat_dict['write_bytes_sec']} io_sec={pg_stat_dict['io_sec']}"
     print(f"Healthy: Additional perf stats for cluster {perf_string}|{perf_string}")
     sys.exit(0)
-        
+
 def checkDF(args):
     if args.warning:
         WARN = float(args.warning)
     if args.critical:
-        CRIT = float(args.critical)        
+        CRIT = float(args.critical)
     if args.byte:
         if args.byte == "T":
             byte_divisor=1024**4
@@ -196,10 +196,10 @@ def checkDF(args):
         else:
             print("Script shouldn't reach this point. There may be bugs!")
             sys.exit(3)
-            
-                
+
 
 if __name__ == "__main__":
+
     parser = argparse.ArgumentParser(description='Runs health checks against a ceph cluster. This is designed to run on the monitoring server using the ceph client software. Supply a ceph.conf, keyring, and user to access the cluster.')
     parser.add_argument('-C','--conf', help='ceph.conf file, defaults to /etc/ceph/ceph.conf.')
     parser.add_argument('-id','--id', help='Ceph authx user',required=True)
@@ -217,7 +217,7 @@ if __name__ == "__main__":
     parser.add_argument('-c','--critical',help='Critical threshold. See specific checks for value types')
 
     args = parser.parse_args()
-    
+
     if args.health:
         checkHealth(args)
     elif args.osd:
@@ -225,6 +225,6 @@ if __name__ == "__main__":
     elif args.pg:
         checkPG(args)
     elif args.df:
-        checkDF(args) 
+        checkDF(args)
     elif args.perf:
         checkPerf(args)

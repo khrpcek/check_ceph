@@ -41,7 +41,15 @@ def checkHealth(args):
     ceph_health_dict = json.loads(ceph_health_json)
 
     if ceph_health_dict['status'] == 'HEALTH_WARN':
-        print(f"{ceph_health_dict['overall_status']}: {ceph_health_dict['summary'][0]['summary']}")
+        overall_status = 'HEALTH_WARN: '
+        check_messages = []
+        for check in ceph_health_dict['checks'].keys():
+            overall_status = f"{overall_status}{check}({ceph_health_dict['checks'][check]['summary']['count']}), "
+            check_messages.append(f"{check}: {ceph_health_dict['checks'][check]['summary']['message']}")
+        print(overall_status.rstrip(" ,"))
+        print
+        for msg in check_messages:
+            print(msg)
         sys.exit(1)
     elif ceph_health_dict['status'] == 'HEALTH_OK':
         print(ceph_health_dict['status'])

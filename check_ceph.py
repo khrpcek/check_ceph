@@ -127,13 +127,14 @@ def checkPerf(args):
     except subprocess.CalledProcessError:
         sys.exit(3)
     pg_stat_dict=json.loads(pg_stat_json)
-    if 'read_bytes_sec' not in  pg_stat_dict:
+    pg_summary_dict=pg_stat_dict['pg_summary']
+    if 'read_bytes_sec' not in  pg_summary_dict:
         pg_stat_dict['read_bytes_sec'] = 0
-    if 'write_bytes_sec' not in  pg_stat_dict:
+    if 'write_bytes_sec' not in  pg_summary_dict:
         pg_stat_dict['write_bytes_sec'] = 0
-    if 'io_sec' not in  pg_stat_dict:
+    if 'io_sec' not in  pg_summary_dict:
         pg_stat_dict['io_sec'] = 0
-    perf_string=f"read_bytes_sec={pg_stat_dict['read_bytes_sec']} write_bytes_sec={pg_stat_dict['write_bytes_sec']} io_sec={pg_stat_dict['io_sec']}"
+    perf_string=f"read_bytes_sec={pg_summary_dict['read_bytes_sec']} write_bytes_sec={pg_summary_dict['write_bytes_sec']} io_sec={pg_summary_dict['io_sec']}"
     print(f"Healthy: Additional perf stats for cluster {perf_string}|{perf_string}")
     sys.exit(0)
 

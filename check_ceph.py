@@ -56,6 +56,10 @@ def checkHealth(args):
         sys.exit(0)
 
 def checkOSD(args):
+    # by default WARN at 2 OSDs down
+    WARN = 1
+    # and CRIT at 3 OSDs down
+    CRIT = 3
     if args.warning:
         WARN = float(args.warning)
     if args.critical:
@@ -139,6 +143,13 @@ def checkPerf(args):
     sys.exit(0)
 
 def checkDF(args):
+
+    # default to max avail < 4TB -> WARN
+    # default to max avail < 2TB -> CRIT
+    WARN=4
+    CRIT=2
+    byte_divisor=1024**4
+
     if args.warning:
         WARN = float(args.warning)
     if args.critical:

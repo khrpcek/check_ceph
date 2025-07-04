@@ -146,54 +146,66 @@ def checkDF(args):
         if args.byte == "T":
             byte_divisor=1024**4
             perf_metric="TB"
+            perf_metric_pretty="TiB"
         elif args.byte == "G":
             byte_divisor=1024**3
             perf_metric="GB"
+            perf_metric_pretty="GiB"
         elif args.byte == "P":
             byte_divisor=1024**5
             perf_metric="PB"
+            perf_metric_pretty="PiB"
     else:
         byte_divisor=1024**4
         perf_metric="TB"
+        perf_metric_pretty="TiB"
 
     try:
         ceph_df_json=subprocess.check_output([f"ceph -n {args.id} -c {args.conf} -k {args.keyring} --format json df"], shell=True)
     except subprocess.CalledProcessError:
         sys.exit(3)
     ceph_df_dict=json.loads(ceph_df_json)
-    #get global stats
-    global_bytes, global_used_bytes, global_avail_bytes = ceph_df_dict['stats']['total_bytes'], ceph_df_dict['stats']['total_used_bytes'], ceph_df_dict['stats']['total_avail_bytes']
-    global_total=global_bytes / byte_divisor
-    global_used=global_used_bytes / byte_divisor
-    global_avail=global_avail_bytes / byte_divisor
-    
+
     #get all pool stats
     pool_stats = {}
     for pool in ceph_df_dict['pools']:
-        pool_stats[pool['name']] = {'bytes_used': pool['stats']['bytes_used'] / byte_divisor, 'max_avail': pool['stats']['max_avail'] / byte_divisor, 'objects': pool['stats']['objects']}
-
-    perf_string=f"global_total_bytes={global_bytes / byte_divisor}{perf_metric} global_used_bytes={global_used_bytes / byte_divisor}{perf_metric} global_avail_bytes={global_avail_bytes / byte_divisor}{perf_metric} "
-    for item in pool_stats.keys():
-        perf_string += f"{item}_bytes_used={pool_stats[item]['bytes_used']}{perf_metric,pool_stats[item]['max_avail']} {item}_max_avail={pool_stats[item]['objects']}{perf_metric,pool_stats[item]['max_avail']} {item}_objects={4} "
+        pool_stats[pool['name']] = {'bytes_used': pool['stats']['bytes_used'], 'max_avail': pool['stats']['max_avail'], 'objects': pool['stats']['objects']}
 
 #if pool is defined alert on that. if pool is not defined alert on the max_avail of all pools if any cross threshold
     if args.pool in pool_stats.keys():
 #        print pool_stats[args.pool]
+
+        pool = args.pool
+        perf_string = f"{pool}_bytes_used={pool_stats[pool]['bytes_used'] / byte_divisor}{perf_metric} {pool}_max_avail={pool_stats[pool]['max_avail'] / byte_divisor}{perf_metric} {pool}_objects={pool_stats[pool]['objects']} "
+        perf_string = perf_string.strip()
+
 #add in percentage later
         if (pool_stats[args.pool]['max_avail'] < WARN) and (pool_stats[args.pool]['max_avail'] > CRIT):
-            print(f"WARNING: Ceph pool {args.pool} has {pool_stats[args.pool]['max_avail']}{perf_metric} availbale|{perf_string}")
+            print(f"WARNING: Ceph pool {args.pool} has {round(pool_stats[args.pool]['max_avail'] / byte_divisor, 2)}{perf_metric_pretty} available|{perf_string}")
             sys.exit(1)
         elif pool_stats[args.pool]['max_avail'] < CRIT:
-            print(f"CRITICAL: Ceph pool {args.pool} has {pool_stats[args.pool]['max_avail']}{perf_metric} availbale|{perf_string}")
+            print(f"CRITICAL: Ceph pool {args.pool} has {pool_stats[args.pool]['max_avail'] / byte_divisor}{perf_metric_pretty} available|{perf_string}")
             sys.exit(2)
         elif pool_stats[args.pool]['max_avail'] > WARN:
-            prin(f"Healthy: Ceph pool {args.pool} has {pool_stats[args.pool]['max_avail']}{perf_metric} availbale|{perf_string}")
+            print(f"Healthy: Ceph pool {args.pool} has {round(pool_stats[args.pool]['max_avail'] / byte_divisor, 2)}{perf_metric_pretty} available|{perf_string}")
             sys.exit(0)
         else:
             print("Script shouldn't reach this point. There may be bugs!")
             sys.exit(3)
 
     else:
+        #get global stats
+        global_bytes, global_used_bytes, global_avail_bytes = ceph_df_dict['stats']['total_bytes'], ceph_df_dict['stats']['total_used_bytes'], ceph_df_dict['stats']['total_avail_bytes']
+        global_total=global_bytes / byte_divisor
+        global_used=global_used_bytes / byte_divisor
+        global_avail=global_avail_bytes / byte_divisor
+
+        perf_string=f"global_total_bytes={global_bytes / byte_divisor}{perf_metric} global_used_bytes={global_used_bytes / byte_divisor}{perf_metric} global_avail_bytes={global_avail_bytes / byte_divisor}{perf_metric} "
+
+        for pool in pool_stats.keys():
+            perf_string += f"{pool}_bytes_used={pool_stats[pool]['bytes_used'] / byte_divisor}{perf_metric} {pool}_max_avail={pool_stats[pool]['max_avail'] / byte_divisor}{perf_metric} {pool}_objects={pool_stats[pool]['objects']} "
+        perf_string = perf_string.strip()
+
         #Alerts based on all pools. If any pool is crossing the threshold we alert on it
         warn_list = []
         crit_list = []
